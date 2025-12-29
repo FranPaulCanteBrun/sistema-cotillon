@@ -1,0 +1,306 @@
+@import "tailwindcss";
+
+/* Custom CSS Variables for theming */
+@theme {
+  /* Color Palette - Festive but Professional */
+  --color-primary-50: oklch(0.98 0.01 280);
+  --color-primary-100: oklch(0.95 0.03 280);
+  --color-primary-200: oklch(0.88 0.06 280);
+  --color-primary-300: oklch(0.78 0.10 280);
+  --color-primary-400: oklch(0.68 0.15 280);
+  --color-primary-500: oklch(0.58 0.20 280);
+  --color-primary-600: oklch(0.50 0.22 280);
+  --color-primary-700: oklch(0.42 0.20 280);
+  --color-primary-800: oklch(0.35 0.16 280);
+  --color-primary-900: oklch(0.28 0.12 280);
+  --color-primary-950: oklch(0.18 0.08 280);
+
+  /* Accent - Warm coral/orange for CTAs */
+  --color-accent-400: oklch(0.75 0.18 35);
+  --color-accent-500: oklch(0.65 0.22 35);
+  --color-accent-600: oklch(0.55 0.20 35);
+
+  /* Success - Green */
+  --color-success-50: oklch(0.97 0.03 145);
+  --color-success-100: oklch(0.93 0.05 145);
+  --color-success-200: oklch(0.85 0.10 145);
+  --color-success-500: oklch(0.65 0.18 145);
+  --color-success-600: oklch(0.55 0.16 145);
+  --color-success-700: oklch(0.45 0.14 145);
+  --color-success-800: oklch(0.35 0.10 145);
+
+  /* Warning - Amber */
+  --color-warning-50: oklch(0.98 0.03 85);
+  --color-warning-100: oklch(0.95 0.06 85);
+  --color-warning-200: oklch(0.88 0.12 85);
+  --color-warning-500: oklch(0.75 0.18 85);
+  --color-warning-600: oklch(0.65 0.16 85);
+  --color-warning-700: oklch(0.55 0.14 85);
+  --color-warning-800: oklch(0.45 0.10 85);
+
+  /* Danger - Red */
+  --color-danger-50: oklch(0.97 0.02 25);
+  --color-danger-100: oklch(0.93 0.05 25);
+  --color-danger-200: oklch(0.85 0.10 25);
+  --color-danger-400: oklch(0.68 0.20 25);
+  --color-danger-500: oklch(0.60 0.22 25);
+  --color-danger-600: oklch(0.50 0.20 25);
+  --color-danger-700: oklch(0.42 0.16 25);
+  --color-danger-800: oklch(0.35 0.12 25);
+
+  /* Surface colors - Complete scale */
+  --color-surface-50: oklch(0.99 0 0);
+  --color-surface-100: oklch(0.97 0 0);
+  --color-surface-200: oklch(0.93 0 0);
+  --color-surface-300: oklch(0.87 0 0);
+  --color-surface-400: oklch(0.70 0 0);
+  --color-surface-500: oklch(0.55 0 0);
+  --color-surface-600: oklch(0.45 0 0);
+  --color-surface-700: oklch(0.35 0 0);
+  --color-surface-800: oklch(0.25 0.01 280);
+  --color-surface-900: oklch(0.18 0.02 280);
+  --color-surface-950: oklch(0.12 0.02 280);
+
+  /* Fonts */
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Shadows */
+  --shadow-soft: 0 2px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
+  --shadow-card: 0 4px 25px -5px oklch(0 0 0 / 0.15), 0 8px 10px -6px oklch(0 0 0 / 0.1);
+
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Animations */
+  --animate-in: enter 0.2s ease-out;
+  --animate-out: exit 0.15s ease-in;
+}
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-100);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-400);
+}
+
+/* Animation Keyframes */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Animation utility classes */
+.animate-in {
+  animation: enter 0.2s ease-out;
+}
+
+.animate-out {
+  animation: exit 0.15s ease-in;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.fade-out {
+  animation: fadeOut 0.15s ease-in;
+}
+
+.slide-in-from-right-full {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.slide-in-from-bottom {
+  animation: slideInFromBottom 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.zoom-in-95 {
+  animation: zoomIn 0.2s ease-out;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-200) 25%,
+    var(--color-surface-100) 50%,
+    var(--color-surface-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Transition utilities */
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Form styling */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+/* Number input arrows hidden */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Remove outline from number inputs */
+input[type="number"]:focus,
+input[type="number"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
