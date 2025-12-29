@@ -53,13 +53,29 @@ cd proyecto-inventario-global
 
 #### 2.1. Verificar Node.js y npm
 ```bash
-node --version  # Debe ser v18 o superior
-npm --version   # Debe ser v9 o superior
+node --version  # Debe ser v22.20.0 (igual que en tu PC)
+npm --version   # Debe ser v11.6.4 (igual que en tu PC)
 ```
 
-Si no tienes Node.js instalado:
-- Descarga desde: https://nodejs.org/
-- Instala la versión LTS (Long Term Support)
+**⚠️ IMPORTANTE**: Necesitas instalar la **misma versión** que en tu PC para evitar problemas de compatibilidad.
+
+**Si no tienes Node.js instalado o tienes una versión diferente:**
+
+**Opción A: Usando nvm-windows (Recomendado)**
+1. Descarga nvm-windows desde: https://github.com/coreybutler/nvm-windows/releases
+2. Instala `nvm-setup.exe`
+3. Abre PowerShell como Administrador y ejecuta:
+   ```bash
+   nvm install 22.20.0
+   nvm use 22.20.0
+   ```
+
+**Opción B: Descarga directa**
+- Ve a: https://nodejs.org/dist/v22.20.0/
+- Descarga: `node-v22.20.0-x64.msi`
+- Ejecuta el instalador
+
+**📖 Ver guía completa**: Consulta `GUIA_INSTALACION_NODE.md` para instrucciones detalladas.
 
 #### 2.2. Instalar dependencias del Frontend
 ```bash
