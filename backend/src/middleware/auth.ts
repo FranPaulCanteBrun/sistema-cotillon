@@ -19,7 +19,27 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   try {
     await request.jwtVerify()
   } catch (err) {
-    reply.status(401).send({ error: true, message: 'No autorizado' })
+    const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+    const hasAuthHeader = !!request.headers.authorization
+    
+    // Mensaje más descriptivo para debugging
+    let message = 'No autorizado'
+    if (!hasAuthHeader) {
+      message = 'Token JWT no proporcionado. Incluye el header: Authorization: Bearer <token>'
+    } else if (errorMessage.includes('expired')) {
+      message = 'Token JWT expirado. Inicia sesión nuevamente'
+    } else if (errorMessage.includes('invalid')) {
+      message = 'Token JWT inválido. Verifica que el token sea correcto'
+    }
+    
+    reply.status(401).send({ 
+      error: true, 
+      message,
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      hint: hasAuthHeader 
+        ? 'El token puede estar expirado o ser inválido. Intenta iniciar sesión nuevamente con POST /api/auth/login'
+        : 'Incluye el header Authorization: Bearer <token> en la solicitud'
+    })
   }
 }
 

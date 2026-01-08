@@ -187,10 +187,11 @@ model Sale {
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   // Relaciones
-  user          User          @relation(fields: [userId], references: [id])
-  customer      Customer?     @relation(fields: [customerId], references: [id])
-  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
-  items         SaleItem[]
+  user           User            @relation(fields: [userId], references: [id])
+  customer       Customer?       @relation(fields: [customerId], references: [id])
+  paymentMethod  PaymentMethod   @relation(fields: [paymentMethodId], references: [id])
+  items          SaleItem[]
+  fiscalDocument FiscalDocument?
 
   @@index([userId])
   @@index([customerId])
@@ -208,13 +209,13 @@ enum SaleStatus {
 }
 
 model SaleItem {
-  id         String  @id @default(uuid())
-  saleId     String  @map("sale_id")
-  variantId  String  @map("variant_id")
-  quantity   Int
-  unitPrice  Decimal @map("unit_price") @db.Decimal(12, 2)
-  discount   Decimal @default(0) @db.Decimal(5, 2) // Porcentaje
-  subtotal   Decimal @db.Decimal(12, 2)
+  id        String  @id @default(uuid())
+  saleId    String  @map("sale_id")
+  variantId String  @map("variant_id")
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(12, 2)
+  discount  Decimal @default(0) @db.Decimal(5, 2) // Porcentaje
+  subtotal  Decimal @db.Decimal(12, 2)
 
   // Relaciones
   sale    Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
@@ -284,3 +285,185 @@ enum SyncStatus {
   CONFLICT
 }
 
+// ==================== FACTURACIÓN ELECTRÓNICA (AFIP/ARCA) ====================
+
+// Cache de Token de Acceso (TA) de WSAA
+// Permite persistir el TA entre reinicios del servidor
+model FiscalTokenCache {
+  id            String   @id @default(uuid())
+  env           String   // 'homo' o 'prod'
+  cuit          String
+  service       String   // 'wsfe'
+  token         String   // Token de WSAA (no exponer en logs)
+  sign          String   // Sign de WSAA (no exponer en logs)
+  expirationTime DateTime @map("expiration_time") // Fecha de expiración del TA
+  obtainedAt    DateTime  @map("obtained_at") // Cuándo se obtuvo el TA
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Un solo TA por (env, cuit, service)
+  @@unique([env, cuit, service])
+  @@index([env, cuit, service])
+  @@index([expirationTime])
+  @@map("fiscal_token_cache")
+}
+
+model FiscalDocument {
+  id     String @id @default(uuid())
+  saleId String @unique @map("sale_id")
+
+  // Datos del emisor (AFIP)
+  cuitEmisor String @map("cuit_emisor")
+  ptoVta     Int    @map("pto_vta")
+  cbteTipo   Int    @map("cbte_tipo") // 11 = Factura C
+  cbteNro    Int    @map("cbte_nro")
+
+  // CAE (Código de Autorización Electrónico)
+  cae    String? // CAE otorgado por AFIP
+  caeVto DateTime? @map("cae_vto") // Fecha de vencimiento del CAE
+
+  // Estado del comprobante
+  estado FiscalDocumentStatus @default(PENDING)
+
+  // Errores y observaciones de AFIP (JSON para flexibilidad)
+  errores       Json? // Array de errores de AFIP
+  observaciones Json? // Observaciones de AFIP
+
+  // Metadatos de la solicitud
+  fechaEmision  DateTime  @map("fecha_emision")
+  fechaServidor DateTime? @map("fecha_servidor") // Fecha del servidor AFIP
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  // Constraints de idempotencia: evitar duplicados de comprobantes fiscales
+  // Un mismo (cuit, ptoVta, cbteTipo, cbteNro) no puede existir dos veces
+  @@unique([cuitEmisor, ptoVta, cbteTipo, cbteNro])
+  // Índices para búsquedas frecuentes
+  @@index([saleId])
+  @@index([cuitEmisor, ptoVta, cbteTipo])
+  @@index([estado])
+  @@index([fechaEmision])
+  @@index([createdAt])
+  @@map("fiscal_documents")
+}
+
+enum FiscalDocumentStatus {
+  PENDING // Pendiente de envío a AFIP
+  SENT // Enviado a AFIP, esperando respuesta
+  AUTHORIZED // Autorizado por AFIP (tiene CAE válido)
+  REJECTED // Rechazado por AFIP
+  NEEDS_REVIEW // Requiere revisión manual (timeout, error de red, etc.)
+}
+
+// ==================== CACHE DE MASTER DATA WSFE ====================
+
+// Cache de parámetros de WSFE (master data) para evitar llamadas innecesarias
+// Estos datos cambian raramente, así que los cacheamos en DB
+model FiscalMasterDataCache {
+  id        String   @id @default(uuid())
+  env       String   // 'homo' o 'prod'
+  dataType  String   // 'tiposDoc', 'tiposIva', 'tiposMonedas', 'tiposTributos', 'tiposCbte', 'ptosVenta'
+  data      Json     // Datos completos del master data (array de objetos)
+  cachedAt  DateTime @default(now()) @map("cached_at")
+  expiresAt DateTime @map("expires_at") // Cache válido por 24 horas
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Un solo cache por (env, dataType)
+  @@unique([env, dataType])
+  @@index([env, dataType])
+  @@index([expiresAt])
+  @@map("fiscal_master_data_cache")
+}
+
+// Tracking del estado de puntos de venta en WSFE
+model FiscalPtoVtaStatus {
+  id           String    @id @default(uuid())
+  env          String    // 'homo' o 'prod'
+  cuit         String
+  status       String    // 'PENDING', 'READY', 'ERROR'
+  lastErrorCode Int?     @map("last_error_code") // Último código de error (ej: 602)
+  lastErrorMsg  String?  @map("last_error_msg") // Último mensaje de error
+  ptosVentaList Json?    @map("ptos_venta_list") // Lista de PV cuando status=READY
+  firstSeenAt   DateTime? @map("first_seen_at") // Primera vez que se detectó READY
+  firstPendingAt DateTime? @map("first_pending_at") // Primera vez que se detectó PENDING
+  lastPendingAt  DateTime? @map("last_pending_at") // Última vez que se detectó PENDING
+  attemptCount  Int       @default(0) @map("attempt_count") // Contador de intentos
+  lastCheckedAt DateTime  @default(now()) @map("last_checked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Un solo registro por (env, cuit)
+  @@unique([env, cuit])
+  @@index([env, cuit])
+  @@index([status])
+  @@index([lastCheckedAt])
+  @@index([firstPendingAt])
+  @@map("fiscal_pto_vta_status")
+}
+
+// Configuración fiscal persistida en DB (sobrescribe .env)
+// Permite cambiar ptoVta y cuitRepresentado sin reiniciar el servidor
+// cuitRepresentado: CUIT que se usa en Auth de WSFE (delegación WSASS)
+// Si no está configurado, se usa el CUIT del certificado (env.AFIP_CUIT)
+model FiscalConfig {
+  id              String   @id @default(uuid())
+  env             String   // 'homo' o 'prod'
+  cuit            String   // CUIT del certificado (para identificar el registro)
+  cuitRepresentado String?  @map("cuit_representado") // CUIT usado en Auth de WSFE (11 dígitos, sin guiones)
+  ptoVta          Int?     @map("pto_vta") // Punto de venta configurado (normalizado como número)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Un solo registro por (env, cuit)
+  @@unique([env, cuit])
+  @@index([env, cuit])
+  @@map("fiscal_config")
+}
+
+// Auditoría de cambios en configuración fiscal
+model FiscalConfigAudit {
+  id          String   @id @default(uuid())
+  env         String   // 'homo' o 'prod'
+  cuit        String
+  fieldName   String   @map("field_name") // 'ptoVta'
+  oldValue    String?  @map("old_value") // Valor anterior (JSON string)
+  newValue    String?   @map("new_value") // Valor nuevo (JSON string)
+  changedBy   String?  @map("changed_by") // Usuario que hizo el cambio (si aplica)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([env, cuit])
+  @@index([createdAt])
+  @@map("fiscal_config_audit")
+}
+
+// Documentos fiscales emitidos (comprobantes autorizados por AFIP)
+model FiscalIssuedDocument {
+  id                      String   @id @default(uuid())
+  env                     String   // 'homo' o 'prod'
+  cuit                    String   // CUIT usado en la emisión
+  ptoVta                  Int      @map("pto_vta")
+  cbteTipo                Int      @map("cbte_tipo") // 11 = Factura C
+  cbteNro                 Int      @map("cbte_nro") // Número de comprobante
+  cae                     String   // Código de Autorización Electrónico
+  caeVto                  DateTime @map("cae_vto") // Fecha de vencimiento del CAE
+  impTotal                Decimal  @map("imp_total") @db.Decimal(12, 2) // Importe total
+  estado                  String   // 'APPROVED' o 'REJECTED'
+  condicionIvaReceptorId  Int?     @map("condicion_iva_receptor_id") // Condición IVA del receptor (obligatorio desde 2025)
+  idempotencyKey          String?  @unique @map("idempotency_key") // Clave de idempotencia
+  wsfeResponse            Json?    @map("wsfe_response") // Respuesta completa de WSFE (para diagnóstico)
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@unique([env, cuit, ptoVta, cbteTipo, cbteNro])
+  @@index([env, cuit, ptoVta])
+  @@index([cae])
+  @@index([idempotencyKey])
+  @@index([createdAt])
+  @@map("fiscal_issued_documents")
+}

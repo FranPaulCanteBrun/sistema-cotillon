@@ -19,6 +19,8 @@ import { invoicingRoutes } from './routes/invoicing.js'
 import { usersRoutes } from './routes/users.js'
 import { customersRoutes } from './routes/customers.js'
 import { suppliersRoutes } from './routes/suppliers.js'
+import { fiscalTestRoutes } from './routes/fiscal-test.js'
+import { FiscalPtoVtaPoller } from './services/arca/FiscalPtoVtaPoller.js'
 
 const app = Fastify({
   logger: {
@@ -84,6 +86,7 @@ await app.register(invoicingRoutes, { prefix: '/api/invoices' })
 await app.register(usersRoutes, { prefix: '/api/users' })
 await app.register(customersRoutes, { prefix: '/api/customers' })
 await app.register(suppliersRoutes, { prefix: '/api/suppliers' })
+await app.register(fiscalTestRoutes, { prefix: '/api/fiscal' })
 
 // Manejo de errores global
 app.setErrorHandler((error, request, reply) => {
@@ -102,6 +105,12 @@ app.setErrorHandler((error, request, reply) => {
 // Graceful shutdown
 const shutdown = async () => {
   console.log('\n🛑 Cerrando servidor...')
+  try {
+    const poller = FiscalPtoVtaPoller.getInstance()
+    poller.stop()
+  } catch (error) {
+    // Ignorar errores al detener poller
+  }
   await prisma.$disconnect()
   await app.close()
   process.exit(0)
@@ -116,6 +125,14 @@ const start = async () => {
     // Verificar conexión a DB
     await prisma.$connect()
     console.log('✅ Conectado a PostgreSQL')
+
+    // Iniciar polling automático de PV (si está configurado)
+    try {
+      const poller = FiscalPtoVtaPoller.getInstance()
+      await poller.start()
+    } catch (pollerError) {
+      console.warn('⚠️ No se pudo iniciar el polling de PV:', pollerError instanceof Error ? pollerError.message : 'Error desconocido')
+    }
 
     await app.listen({ port: env.PORT, host: env.HOST })
     console.log(`🚀 Servidor corriendo en http://${env.HOST}:${env.PORT}`)
